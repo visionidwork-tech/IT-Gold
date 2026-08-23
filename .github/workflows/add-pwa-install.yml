@@ -1,0 +1,54 @@
+name: Add IT Gold PWA install
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-pwa-install.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  add-pwa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add installable web app files and UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          if 'rel="manifest" href="/manifest.webmanifest"' not in s:
+              s=s.replace('</head>', '<link rel="manifest" href="/manifest.webmanifest">\n<meta name="theme-color" content="#f4c44e">\n<link rel="icon" href="/itgold-icon.svg" type="image/svg+xml">\n</head>')
+          install_card='''\n<div class="card" id="installWebsite"><span class="badge">ADD TO YOUR DEVICE</span><h3>Install IT Gold Website</h3><p>Add IT Gold to your phone or tablet home screen for quick access to plans, trial requests, order status, and login credentials.</p><button class="btn" id="installSiteBtn" type="button">INSTALL IT GOLD</button><div class="status" id="installSiteStatus"></div></div>\n'''
+          if 'id="installWebsite"' not in s:
+              marker='<div class="card trial">'
+              pos=s.find(marker)
+              if pos!=-1:
+                  s=s[:pos]+install_card+s[pos:]
+          install_js='''\n<script>\nlet deferredInstallPrompt=null;\nconst installBtn=document.getElementById('installSiteBtn');\nconst installStatus=document.getElementById('installSiteStatus');\nwindow.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;if(installBtn)installBtn.style.display='inline-block';if(installStatus)installStatus.textContent='Ready to install on this device.'});\nif(installBtn)installBtn.addEventListener('click',async()=>{\n  if(deferredInstallPrompt){deferredInstallPrompt.prompt();const choice=await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;installStatus.textContent=choice.outcome==='accepted'?'IT Gold was added to your device.':'Install was canceled.';return;}\n  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);\n  installStatus.textContent=ios?'On iPhone/iPad: tap Share, then choose Add to Home Screen.':'Open your browser menu and choose Install app or Add to Home screen.';\n});\nwindow.addEventListener('appinstalled',()=>{if(installStatus)installStatus.textContent='IT Gold is installed on this device.'});\nif('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));\n</script>\n'''
+          if 'deferredInstallPrompt' not in s:
+              s=s.replace('</body>', install_js+'\n</body>')
+          p.write_text(s)
+          Path('manifest.webmanifest').write_text('''{
+            "name": "IT Gold",
+            "short_name": "IT Gold",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#050505",
+            "theme_color": "#f4c44e",
+            "description": "IT Gold customer portal for plans, trials, installation and login credentials.",
+            "icons": [{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+          }''')
+          Path('service-worker.js').write_text('''const CACHE='itgold-v1';const ASSETS=['/','/manifest.webmanifest','/itgold-icon.svg'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))})''')
+          Path('itgold-icon.svg').write_text('''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#050505"/><circle cx="256" cy="256" r="205" fill="none" stroke="#f4c44e" stroke-width="18"/><text x="256" y="235" text-anchor="middle" font-family="Arial,sans-serif" font-size="104" font-weight="900" fill="#f4c44e">IT</text><text x="256" y="330" text-anchor="middle" font-family="Arial,sans-serif" font-size="76" font-weight="900" fill="#ffffff">GOLD</text></svg>''')
+          PY
+      - name: Commit PWA files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html manifest.webmanifest service-worker.js itgold-icon.svg
+          git diff --cached --quiet || git commit -m "Add installable IT Gold web app"
+          git push
