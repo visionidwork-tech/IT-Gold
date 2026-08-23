@@ -1,0 +1,11 @@
+{
+  "name": "IT Gold",
+  "short_name": "IT Gold",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#f4c44e",
+  "description": "IT Gold customer portal for plans, trials, installation and login credentials.",
+  "icons": [{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
