@@ -6,6 +6,10 @@
   "display": "standalone",
   "background_color": "#050505",
   "theme_color": "#f4c44e",
-  "description": "IT Gold customer portal for plans, trials, installation and login credentials.",
-  "icons": [{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "description": "IT Gold customer portal for plans, trials, installation, login credentials and service renewals.",
+  "icons": [{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}],
+  "shortcuts": [
+    {"name":"Renew Service","short_name":"Renew","url":"/renewal.html","icons":[{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml"}]},
+    {"name":"Check Login","short_name":"Login","url":"/#login","icons":[{"src":"/itgold-icon.svg","sizes":"any","type":"image/svg+xml"}]}
+  ]
 }
