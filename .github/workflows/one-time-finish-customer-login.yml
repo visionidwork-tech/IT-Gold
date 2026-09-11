@@ -1,0 +1,50 @@
+name: Finish customer login flow
+on:
+  push:
+    paths: ['.github/workflows/one-time-finish-customer-login.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update customer-facing flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          link='<a href="/existing-customer.html" style="display:block;text-align:center;margin:10px auto 0;color:#aaa;font-size:13px;text-decoration:underline">Already an IT Gold customer? Register here</a>'
+          # Remove misplaced copy, then put it inside My IT Gold immediately after its two action buttons.
+          s=s.replace(link,'')
+          anchor='<div class="row"><a class="btn" href="/renewal.html">MY SERVICE</a><a class="btn" href="/share.html">SHARE & SAVE $5</a></div>'
+          if anchor in s: s=s.replace(anchor,anchor+link,1)
+          # Customer lookup: phone + email; internal order refs remain untouched.
+          s=s.replace('Enter your order/trial reference and the same email address you used when signing up.','Enter the phone number and email address connected to your IT Gold account or trial.')
+          s=s.replace('<input id="lookupRef" placeholder="Order or trial reference">','<input id="lookupRef" type="tel" inputmode="tel" autocomplete="tel" placeholder="Phone number">')
+          # Replace only lookup request expressions, retaining internal order/trial references elsewhere.
+          s=s.replace("ref:lookupRef.value.trim(),email:lookupEmail.value.trim()","phone:lookupRef.value.replace(/\\D/g,''),email:lookupEmail.value.trim()")
+          s=s.replace("ref:lookupRef.value.trim(), email:lookupEmail.value.trim()","phone:lookupRef.value.replace(/\\D/g,''), email:lookupEmail.value.trim()")
+          s=s.replace("ref: lookupRef.value.trim(), email: lookupEmail.value.trim()","phone: lookupRef.value.replace(/\\D/g,''), email: lookupEmail.value.trim()")
+          p.write_text(s)
+          sw=Path('service-worker.js')
+          if sw.exists():
+              t=sw.read_text()
+              import re
+              t=re.sub(r'itgold-v\\d+','itgold-v11',t)
+              sw.write_text(t)
+          PY
+      - name: Verify
+        run: |
+          grep -q 'placeholder="Phone number"' index.html
+          grep -q 'Already an IT Gold customer? Register here' index.html
+          python3 - <<'PY'
+          s=open('index.html').read(); link='Already an IT Gold customer? Register here'; assert s.count(link)==1; assert s.find(link)<s.find('TRY BEFORE YOU BUY')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html service-worker.js
+          git diff --cached --quiet || git commit -m 'Use phone and email for customer login and fix existing customer entry'
+          git push
