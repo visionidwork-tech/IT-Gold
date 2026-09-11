@@ -1,0 +1,34 @@
+name: One-time IT Gold home cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-home-cleanup.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simplify customer home
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          start=s.find('<div class="card"><span class="badge">SHARE & SAVE</span>')
+          end=s.find('<div class="card trial">', start)
+          if start!=-1 and end!=-1:
+              tools='''<div class="card" id="myItGold"><span class="badge">MY IT GOLD</span><h3>Everything you need in one place</h3><p>Manage your service, earn referral credits, or share IT Gold.</p><div class="row"><a class="btn" href="/renewal.html">MY SERVICE</a><a class="btn" href="/referrals.html">REFER & SAVE $5</a></div><a class="btn" style="margin-top:10px;background:#151515;color:#f4c44e;border:1px solid #6e5517" href="/share.html">SHARE IT GOLD</a></div>'''
+              s=s[:start]+tools+s[end:]
+          s=s.replace('<button id="installBottom" class="bottom-install" type="button">＋ INSTALL IT GOLD</button>','')
+          s=s.replace("installBottom.addEventListener('click',installSite);",'')
+          p.write_text(s)
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Simplify IT Gold customer home'
+          git push
