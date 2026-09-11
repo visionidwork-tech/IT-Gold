@@ -1,0 +1,41 @@
+name: One-time existing customer entry
+on:
+  push:
+    paths: ['.github/workflows/one-time-existing-customer-entry.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add existing customer entry without disrupting new customer flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          marker='Share & Save $5'
+          # Put a compact existing-customer link next to the My IT Gold tools, never above the sales hero/plans.
+          link='<a href="/existing-customer.html" style="display:block;text-align:center;margin:10px auto 0;color:#aaa;font-size:13px;text-decoration:underline">Already an IT Gold customer? Register here</a>'
+          if link not in s:
+              pos=s.find(marker)
+              if pos!=-1:
+                  end=s.find('</section>',pos)
+                  if end!=-1: s=s[:end]+link+s[end:]
+              else:
+                  body=s.rfind('</body>'); s=s[:body]+link+s[body:]
+          p.write_text(s)
+          sw=Path('service-worker.js')
+          if sw.exists():
+              t=sw.read_text().replace('itgold-v8','itgold-v10').replace('itgold-v9','itgold-v10')
+              if "'/existing-customer.html'" not in t and '"/existing-customer.html"' not in t:
+                  t=t.replace("'/share.html'","'/share.html','/existing-customer.html'").replace('"/share.html"','"/share.html","/existing-customer.html"')
+              sw.write_text(t)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html service-worker.js
+          git diff --cached --quiet || git commit -m 'Add existing customer referral registration entry'
+          git push
