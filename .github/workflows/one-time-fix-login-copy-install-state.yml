@@ -1,0 +1,44 @@
+name: Fix login copy and installed PWA state
+on:
+  push:
+    paths: ['.github/workflows/one-time-fix-login-copy-install-state.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch UI and install behavior
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          files=list(Path('.').glob('*.html'))
+          for p in files:
+              s=p.read_text()
+              s=s.replace('Enter your order/trial reference and the same email address you used when signing up.','Enter the phone number and email address connected to your IT Gold account or trial.')
+              s=s.replace('Enter your order / trial reference and the same email address you used when signing up.','Enter the phone number and email address connected to your IT Gold account or trial.')
+              # Installed PWA must never show its own install button/control.
+              if 'installBtn' in s and 'ITGOLD_INSTALLED_GUARD' not in s:
+                  guard="<script>/* ITGOLD_INSTALLED_GUARD */(()=>{const installed=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true||document.referrer.startsWith('android-app://');if(installed){const hide=()=>{document.querySelectorAll('#installBtn,.install,[data-install-app]').forEach(el=>el.style.display='none');document.querySelectorAll('#installStatus').forEach(el=>el.style.display='none')};hide();document.addEventListener('DOMContentLoaded',hide);window.addEventListener('appinstalled',hide)}})();</script>"
+                  s=s.replace('</body>',guard+'</body>')
+              p.write_text(s)
+          sw=Path('service-worker.js')
+          if sw.exists():
+              t=sw.read_text()
+              t=re.sub(r"itgold-v\d+","itgold-v12",t)
+              sw.write_text(t)
+          PY
+      - name: Verify
+        run: |
+          ! grep -R -F 'Enter your order/trial reference and the same email address you used when signing up.' -- *.html
+          grep -q 'ITGOLD_INSTALLED_GUARD' index.html
+          grep -q 'itgold-v12' service-worker.js
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add '*.html' service-worker.js
+          git diff --cached --quiet || git commit -m 'Fix login wording and hide install controls in installed app'
+          git push
