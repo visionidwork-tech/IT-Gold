@@ -1,4 +1,4 @@
-const CACHE='itgold-v5';
+const CACHE='itgold-v6';
 const ASSETS=['/','/share.html','/manifest.webmanifest','/itgold-icon.svg'];
 const SHARE_MARKUP='<div id="itgoldShareQuick" style="max-width:1050px;margin:0 auto;padding:0 20px 16px"><a href="/share.html" style="display:block;width:100%;padding:14px;border-radius:12px;background:#151515;color:#f4c44e;border:1px solid #6e5517;font-family:Arial,sans-serif;font-weight:900;text-align:center;text-decoration:none;box-sizing:border-box">▣ SHARE IT GOLD — SHOW QR CODE</a></div>';
 function addShareButton(html){if(html.includes('id="itgoldShareQuick"'))return html;return html.replace('<div class="wrap">',SHARE_MARKUP+'<div class="wrap">')}
