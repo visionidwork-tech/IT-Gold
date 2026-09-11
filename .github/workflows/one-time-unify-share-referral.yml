@@ -1,0 +1,29 @@
+name: One-time unify share and referral
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-unify-share-referral.yml'
+permissions:
+  contents: write
+jobs:
+  unify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unify home share action
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          old='<div class="row"><a class="btn" href="/renewal.html">MY SERVICE</a><a class="btn" href="/referrals.html">REFER & SAVE $5</a></div><a class="btn" style="margin-top:10px;background:#151515;color:#f4c44e;border:1px solid #6e5517" href="/share.html">SHARE IT GOLD</a>'
+          new='<div class="row"><a class="btn" href="/renewal.html">MY SERVICE</a><a class="btn" href="/share.html">SHARE & SAVE $5</a></div>'
+          if old in s: s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Unify Share IT Gold with referral savings'
+          git push
