@@ -1,0 +1,28 @@
+name: One-time annual pricing update
+on:
+  push:
+    paths: ['.github/workflows/one-time-annual-pricing.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update annual prices everywhere in customer UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          replacements=[('$150/yr','$200/yr'),('$200/yr','$320/yr'),('$250/yr','$440/yr')]
+          # Restrict to index customer plan cards; backend plan table is updated separately.
+          p=Path('index.html'); s=p.read_text()
+          for a,b in replacements: s=s.replace(a,b)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Set annual plans to save 100 dollars'
+          git push
