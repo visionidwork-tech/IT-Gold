@@ -1,0 +1,37 @@
+name: One-time referral UI update
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-referral-ui.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add referral UI safely
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          if 'REFER & SAVE $5' not in s:
+              s=s.replace('</div><div class="card renew-card">','</div><div class="card"><span class="badge">SHARE & SAVE</span><h3>Refer & Save $5</h3><p>Every friend who signs up and stays active for 30 days earns you a $5 credit toward your IT Gold service.</p><a class="btn" href="/referrals.html">REFER & SAVE $5</a></div><div class="card"><span class="badge">SHARE</span><h3>Share IT Gold</h3><p>Let someone scan the IT Gold QR code directly from your phone.</p><a class="btn" href="/share.html">SHARE IT GOLD — SHOW QR CODE</a></div><div class="card renew-card">',1)
+              s=s.replace('<select data-f="device">${deviceOptions()}</select><button class="btn" data-continue-payment>','<select data-f="device">${deviceOptions()}</select><input data-f="referral" placeholder="Referral code (optional)"><button class="btn" data-continue-payment>',1)
+              s=s.replace("const payload={full_name:q('name'),phone:q('phone'),email:q('email'),device_type:q('device'),billing_cycle:box.dataset.cycle,connections:Number(box.dataset.connections),payment_code:box.dataset.paymentCode,payment_method:q('method'),payer_handle:q('payer')};","const payload={full_name:q('name'),phone:q('phone'),email:q('email'),device_type:q('device'),billing_cycle:box.dataset.cycle,connections:Number(box.dataset.connections),payment_code:box.dataset.paymentCode,payment_method:q('method'),payer_handle:q('payer'),referral_code:q('referral')};")
+              s=s.replace("orderRef.textContent=d.order_ref||d.public_order_ref||payload.payment_code;location.hash='install'","orderRef.textContent=d.order_ref||d.public_order_ref||payload.payment_code;if(payload.referral_code){fetch(base+'itgold-referrals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'attach',ref:d.order_ref||d.public_order_ref||payload.payment_code,email:payload.email,referral_code:payload.referral_code})}).catch(()=>{})}location.hash='install'")
+              s=s.replace("loadSiteConfig().catch(()=>{}).finally(renderPlans);","const incomingRef=new URLSearchParams(location.search).get('ref');loadSiteConfig().catch(()=>{}).finally(()=>{renderPlans();if(incomingRef){setTimeout(()=>document.querySelectorAll('[data-f=\"referral\"]').forEach(x=>x.value=incomingRef),50)}});")
+              p.write_text(s)
+          sw=Path('service-worker.js')
+          t=sw.read_text().replace("const CACHE='itgold-v4'","const CACHE='itgold-v5'").replace("const CACHE='itgold-v3'","const CACHE='itgold-v5'")
+          if "'/share.html'" not in t: t=t.replace("'/itgold-icon.svg'","'/itgold-icon.svg','/share.html','/referrals.html'")
+          sw.write_text(t)
+          PY
+      - name: Commit UI update
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html service-worker.js
+          git diff --cached --quiet || git commit -m 'Add Refer and Save customer experience'
+          git push
