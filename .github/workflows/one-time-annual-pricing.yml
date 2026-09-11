@@ -1,7 +1,8 @@
 name: One-time annual pricing update
 on:
   push:
-    paths: ['.github/workflows/one-time-annual-pricing.yml']
+    paths:
+      - '.github/workflows/one-time-annual-pricing.yml'
 permissions:
   contents: write
 jobs:
@@ -9,14 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update annual prices everywhere in customer UI
+      - name: Update annual prices in customer UI
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          replacements=[('$150/yr','$200/yr'),('$200/yr','$320/yr'),('$250/yr','$440/yr')]
-          # Restrict to index customer plan cards; backend plan table is updated separately.
-          p=Path('index.html'); s=p.read_text()
-          for a,b in replacements: s=s.replace(a,b)
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('$150/yr','$200/yr').replace('$200/yr','$320/yr').replace('$250/yr','$440/yr')
           p.write_text(s)
           PY
       - name: Commit
