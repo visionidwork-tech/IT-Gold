@@ -1,0 +1,30 @@
+name: One-time home compatibility fix
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-home-compat.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve existing config bindings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          needle='<div class="card" id="myItGold"><span class="badge">MY IT GOLD</span>'
+          repl=needle+'<span id="existingTitle" class="hidden"></span><span id="existingText" class="hidden"></span>'
+          if needle in s and 'id="existingTitle"' not in s:
+              s=s.replace(needle,repl,1)
+          p.write_text(s)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Preserve site config after home cleanup'
+          git push
