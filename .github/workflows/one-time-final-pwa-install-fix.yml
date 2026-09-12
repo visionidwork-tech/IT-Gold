@@ -1,0 +1,45 @@
+name: Final PWA install-state fix
+on:
+  push:
+    paths: ['.github/workflows/one-time-final-pwa-install-fix.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix install UX everywhere
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for p in Path('.').glob('*.html'):
+            s=p.read_text()
+            # Install controls start hidden. Browser shows them only after proving installation is available.
+            s=s.replace('<div class="mini-install">','<div class="mini-install" style="display:none">')
+            s=s.replace('<button id="installBtn" class="install">','<button id="installBtn" class="install" style="display:none">')
+            s=s.replace('<button id="installBtn" class="bottom-install">','<button id="installBtn" class="bottom-install" style="display:none">')
+            # When beforeinstallprompt fires, reveal the applicable control. Installed apps never fire it.
+            s=s.replace("deferredInstallPrompt=e;installTopStatus.textContent='Ready to install'","deferredInstallPrompt=e;const w=document.querySelector('.mini-install');if(w)w.style.display='flex';installTopStatus.textContent='Ready to install'")
+            s=s.replace("deferredInstallPrompt=e;installStatus.textContent='Ready to install'","deferredInstallPrompt=e;if(installBtn)installBtn.style.display='block';installStatus.textContent='Ready to install'")
+            # Once installation succeeds, immediately hide controls.
+            if 'ITGOLD_APPINSTALLED_HIDE' not in s and ('installTop' in s or 'installBtn' in s):
+              js="<script>/* ITGOLD_APPINSTALLED_HIDE */window.addEventListener('appinstalled',()=>{document.querySelectorAll('.mini-install,#installBtn,.bottom-install').forEach(el=>el.style.display='none')});</script>"
+              s=s.replace('</body>',js+'</body>')
+            p.write_text(s)
+          sw=Path('service-worker.js')
+          if sw.exists():
+            t=sw.read_text();t=re.sub(r'itgold-v\d+','itgold-v13',t);sw.write_text(t)
+          PY
+      - name: Verify
+        run: |
+          grep -q 'mini-install" style="display:none"' index.html
+          grep -q 'itgold-v13' service-worker.js
+      - name: Commit
+        run: |
+          git config user.name 'IT Gold Automation'
+          git config user.email 'visionidwork@gmail.com'
+          git add '*.html' service-worker.js
+          git diff --cached --quiet || git commit -m 'Only show install control when browser offers installation'
+          git push
