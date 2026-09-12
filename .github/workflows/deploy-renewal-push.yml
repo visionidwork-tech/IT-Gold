@@ -1,0 +1,34 @@
+name: Deploy renewal push notification
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/deploy-renewal-push.yml']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+      - name: Prepare renewal function patch
+        env:
+          PROJECT_REF: bhfnlzvldmvwbuujexcj
+          ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          test -n "$ACCESS_TOKEN"
+          mkdir -p supabase/functions
+          supabase functions download submit-renewal --project-ref "$PROJECT_REF"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('supabase/functions/submit-renewal/index.ts')
+          s=p.read_text()
+          if 'webpush from' not in s:
+            s=s.replace('import { createClient } from "https://esm.sh/@supabase/supabase-js@2";','import { createClient } from "https://esm.sh/@supabase/supabase-js@2";\nimport webpush from "npm:web-push@3.6.7";')
+          marker='const clean=(v:any,n=200)=>String(v??"").trim().slice(0,n);'
+          push='''\nconst VAPID_PUBLIC="BOq74vqnzPUjdVkeAsjgPl8GekjiMNFPGSzEhw4cywpgfdJesMRzKbApCOGZn6zzFrH93ixo60ZfXXd4ynYz_zo";\nconst VAPID_PRIVATE=Deno.env.get("ITGOLD_VAPID_PRIVATE_KEY")||"";\nif(VAPID_PRIVATE) webpush.setVapidDetails("mailto:visionidwork@gmail.com",VAPID_PUBLIC,VAPID_PRIVATE);\nasync function pushOwner(sb:any,payload:any){if(!VAPID_PRIVATE)return;try{const {data:subs}=await sb.from("owner_push_subscriptions").select("id,endpoint,p256dh,auth");for(const x of subs??[]){try{await webpush.sendNotification({endpoint:x.endpoint,keys:{p256dh:x.p256dh,auth:x.auth}},JSON.stringify(payload));}catch(e:any){if(e?.statusCode===404||e?.statusCode===410)await sb.from("owner_push_subscriptions").delete().eq("id",x.id)}}}catch(e){console.error("renewal push",e)}}\n'''
+          if 'async function pushOwner' not in s:s=s.replace(marker,marker+push)
+          needle='return out({ok:true,renewal_ref:r.payment_code'
+          if 'IT Gold Renewal Submitted' not in s:
+            s=s.replace(needle,'await pushOwner(sb,{title:"IT Gold Renewal Submitted",body:`${o.customer?.full_name||"Customer"} submitted a renewal for ${o.plan?.name||"current service"}.`,url:"/admin-renewals.html",tag:`renewal-${r.id}`});'+needle)
+          p.write_text(s)
+          PY
+          supabase functions deploy submit-renewal --project-ref "$PROJECT_REF" --no-verify-jwt
