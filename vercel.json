@@ -1,8 +1,10 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/", "destination": "/install-first.html", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/install-first.html" },
     { "source": "/service", "destination": "/index.html" }
   ]
 }
