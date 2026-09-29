@@ -3,8 +3,5 @@
   "trailingSlash": false,
   "redirects": [
     { "source": "/", "destination": "/install-first.html", "permanent": false }
-  ],
-  "rewrites": [
-    { "source": "/service", "destination": "/index.html" }
   ]
 }
