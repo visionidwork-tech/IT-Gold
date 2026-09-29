@@ -1,0 +1,36 @@
+name: Fix homepage install-first flow
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-homepage-flow.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update only hero actions and How It Works
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          old_actions = '<div class="actions"><a class="btn" href="#plans">▶ VIEW PLANS</a><a class="btn outline" href="#how">HOW IT WORKS</a><a class="btn outline" href="/install-first.html">⬇ INSTALL YOUR PLAYER FIRST</a></div>'
+          new_actions = '<div class="actions"><a class="btn" href="/install-first.html">⬇ INSTALL YOUR PLAYER FIRST</a><a class="btn outline" href="#plans">▶ VIEW PLANS</a><a class="btn outline" href="#how">HOW IT WORKS</a></div>'
+          old_how = '<section class="section" id="how"><div class="sectionhead"><span>QUICK START</span><h2>From payment to watching.</h2></div><div class="flow"><article class="card"><div class="num">01</div><h3>Choose & pay</h3><p>Select your plan and pay with Cash App or Venmo using your IT Gold payment reference.</p></article><article class="card"><div class="num">02</div><h3>We activate</h3><p>We manually verify your payment and prepare your service. Please allow 3–4 hours.</p></article><article class="card"><div class="num">03</div><h3>Install & sign in</h3><p>Use the current Downloader code and your credentials to install and start watching.</p></article></div></section>'
+          new_how = '<section class="section" id="how"><div class="sectionhead"><span>QUICK START</span><h2>Install first. Then choose your plan.</h2></div><div class="flow"><article class="card"><div class="num">01</div><h3>Install Your Player First</h3><p>Install IT Revised using Downloader on supported Android, Fire TV, and Google TV devices. Apple TV, iPhone, and iPad users install Smarters Pro from the Apple App Store.</p></article><article class="card"><div class="num">02</div><h3>Choose Your Plan</h3><p>Return to the main site, choose your plan or trial, and complete your order.</p></article><article class="card"><div class="num">03</div><h3>We Activate & You Sign In</h3><p>We verify your order and payment, activate your service, and send your login credentials. Sign in and start watching. Please allow 3–4 hours for manual activation.</p></article></div></section>'
+          if s.count(old_actions) != 1:
+              raise SystemExit('Hero action block did not match exactly once; aborting.')
+          if s.count(old_how) != 1:
+              raise SystemExit('How It Works block did not match exactly once; aborting.')
+          s = s.replace(old_actions, new_actions).replace(old_how, new_how)
+          p.write_text(s)
+      - name: Commit homepage fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix install-first homepage flow"
+          git push
